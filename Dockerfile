@@ -70,7 +70,10 @@ RUN set -ex \
     websocat \
     swaks \
     perl-crypt-ssleay \
-    perl-net-ssleay
+    perl-net-ssleay \
+    tmux \
+    skopeo \
+    postgresql15-client
 
 # Installing ctop - top-like container monitor
 COPY --from=fetcher /tmp/ctop /usr/local/bin/ctop
