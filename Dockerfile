@@ -52,6 +52,7 @@ RUN set -ex \
     nmap-nping \
     nmap-scripts \
     openssl \
+    postgresql15-client \
     py3-pip \
     py3-setuptools \
     scapy \
@@ -59,9 +60,11 @@ RUN set -ex \
     speedtest-cli \
     openssh \
     oh-my-zsh \
+    skopeo \
     strace \
     tcpdump \
     tcptraceroute \
+    tmux \
     tshark \
     util-linux \
     vim \
@@ -70,10 +73,7 @@ RUN set -ex \
     websocat \
     swaks \
     perl-crypt-ssleay \
-    perl-net-ssleay \
-    tmux \
-    skopeo \
-    postgresql15-client
+    perl-net-ssleay
 
 # Installing ctop - top-like container monitor
 COPY --from=fetcher /tmp/ctop /usr/local/bin/ctop
