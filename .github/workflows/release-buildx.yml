@@ -53,7 +53,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ vars.REPOSITORY_OWNER }}:latest
+            benhunter:latest
             ${{ vars.REPOSITORY_OWNER }}:${{ github.ref_name }}
             ${{ vars.REPOSITORY_OWNER }}:${{ github.sha}}
             ghcr.io/${{ vars.REPOSITORY_OWNER }}:latest
