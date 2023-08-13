@@ -43,6 +43,9 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       -
+        name: Debug tags
+        run: echo "${{ vars.REPOSITORY_OWNER }}"
+      -
         name: Build and push
         uses: docker/build-push-action@v4
         with:
@@ -50,9 +53,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ github.repository_owner }}:latest
-            ${{ github.repository_owner }}:${{ github.ref_name }}
-            ${{ github.repository_owner }}:${{ github.sha}}
-            ghcr.io/${{ github.repository_owner }}:latest
-            ghcr.io/${{ github.repository_owner }}:${{ github.ref_name }}
-            ghcr.io/${{ github.repository_owner }}:${{ github.sha }}
+            ${{ vars.REPOSITORY_OWNER }}:latest
+            ${{ vars.REPOSITORY_OWNER }}:${{ github.ref_name }}
+            ${{ vars.REPOSITORY_OWNER }}:${{ github.sha}}
+            ghcr.io/${{ vars.REPOSITORY_OWNER }}:latest
+            ghcr.io/${{ vars.REPOSITORY_OWNER }}:${{ github.ref_name }}
+            ghcr.io/${{ vars.REPOSITORY_OWNER }}:${{ github.sha }}
