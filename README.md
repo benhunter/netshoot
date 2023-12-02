@@ -9,31 +9,57 @@
 dP    dP `88888P'   dP   `88888P' dP    dP `88888P' `88888P'   dP
 ```
 
-**Purpose:** Docker and Kubernetes network troubleshooting can become complex. With proper understanding of how Docker and Kubernetes networking works and the right set of tools, you can troubleshoot and resolve these networking issues. The `netshoot` container has a set of powerful networking troubleshooting tools that can be used to troubleshoot Docker networking issues. Along with these tools come a set of use-cases that show how this container can be used in real-world scenarios.
+---
 
-**Network Namespaces:** Before starting to use this tool, it's important to go over one key topic: **Network Namespaces**. Network namespaces provide isolation of the system resources associated with networking. Docker uses network and other type of namespaces (`pid`,`mount`,`user`..etc) to create an isolated environment for each container. Everything from interfaces, routes, and IPs is completely isolated within the network namespace of the container. 
+- [Purpose](#purpose)
+- [Get netshoot](#get-netshoot)
+- [Use netshoot](#use-netshoot)
+- [Troubleshooting problems](#network-problems)
+- [Packages](#included-packages)
+
+# Purpose
+
+Docker and Kubernetes network troubleshooting can become complex. With proper understanding of how Docker and Kubernetes networking works and the right set of tools, you can troubleshoot and resolve these networking issues. The `netshoot` container has a set of powerful networking troubleshooting tools that can be used to troubleshoot Docker networking issues. Along with these tools come a set of use-cases that show how this container can be used in real-world scenarios.
+
+**Network Namespaces:** Before starting to use this tool, it's important to go over one key topic: **Network Namespaces**. Network namespaces provide isolation of the system resources associated with networking. Docker uses network and other type of namespaces (`pid`,`mount`,`user`..etc) to create an isolated environment for each container. Everything from interfaces, routes, and IPs is completely isolated within the network namespace of the container.
 
 Kubernetes also uses network namespaces. Kubelets creates a network namespace per pod where all containers in that pod share that same network namespace (eths,IP, tcp sockets...etc). This is a key difference between Docker containers and Kubernetes pods.
 
-Cool thing about namespaces is that you can switch between them. You can enter a different container's network namespace, perform some troubleshooting on its network's stack with tools that aren't even installed on that container. Additionally, `netshoot` can be used to troubleshoot the host itself by using the host's network namespace. This allows you to perform any troubleshooting without installing any new packages directly on the host or your application's package. 
+Cool thing about namespaces is that you can switch between them. You can enter a different container's network namespace, perform some troubleshooting on its network's stack with tools that aren't even installed on that container. Additionally, `netshoot` can be used to troubleshoot the host itself by using the host's network namespace. This allows you to perform any troubleshooting without installing any new packages directly on the host or your application's package.
+
+# Get netshoot
+
+## [Docker Hub](https://hub.docker.com/r/benhunter/netshoot)
+
+```sh
+docker pull benhunter/netshoot
+```
+
+## [GitHub Container Registry](https://github.com/benhunter/netshoot/pkgs/container/netshoot)
+
+```sh
+docker pull ghcr.io/benhunter/netshoot:d6cbde209966ab739facd29ffbcad2ed75268849
+```
 
 # Credit
 
 Thanks to [@nicolaka](https://github.com/nicolaka) for providing the awesome original [netshoot](https://github.com/nicolaka/netshoot). I've simply added a few tools for my personal needs.
 
-# Netshoot with Docker 
+# Use netshoot
 
-* **Container's Network Namespace:** If you're having networking issues with your application's container, you can launch `netshoot` with that container's network namespace like this:
+## Netshoot with Docker
 
-    `$ docker run -it --net container:<container_name> benhunter/netshoot`
+- **Container's Network Namespace:** If you're having networking issues with your application's container, you can launch `netshoot` with that container's network namespace like this:
 
-* **Host's Network Namespace:** If you think the networking issue is on the host itself, you can launch `netshoot` with that host's network namespace:
+  `$ docker run -it --net container:<container_name> benhunter/netshoot`
 
-    `$ docker run -it --net host benhunter/netshoot`
+- **Host's Network Namespace:** If you think the networking issue is on the host itself, you can launch `netshoot` with that host's network namespace:
 
-* **Network's Network Namespace:** If you want to troubleshoot a Docker network, you can enter the network's namespace using `nsenter`. This is explained in the `nsenter` section below.
+  `$ docker run -it --net host benhunter/netshoot`
 
-# Netshoot with Docker Compose
+- **Network's Network Namespace:** If you want to troubleshoot a Docker network, you can enter the network's namespace using `nsenter`. This is explained in the `nsenter` section below.
+
+## Netshoot with Docker Compose
 
 You can easily deploy `netshoot` using Docker Compose using something like this:
 
@@ -55,72 +81,72 @@ services:
       - 80:80
 ```
 
-# Netshoot with Kubernetes
+## Netshoot with Kubernetes
 
-* if you want to debug using an [ephemeral container](https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/#ephemeral-container-example) in an existing pod:
+- if you want to debug using an [ephemeral container](https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/#ephemeral-container-example) in an existing pod:
 
-    `$ kubectl debug mypod -it --image=benhunter/netshoot`
+  `$ kubectl debug mypod -it --image=benhunter/netshoot`
 
-* if you want to spin up a throw away pod for debugging.
+- if you want to spin up a throw away pod for debugging.
 
-    `$ kubectl run tmp-shell --rm -i --tty --image benhunter/netshoot`
+  `$ kubectl run tmp-shell --rm -i --tty --image benhunter/netshoot`
 
-* if you want to spin up a container on the host's network namespace.
+- if you want to spin up a container on the host's network namespace.
 
-    `$ kubectl run tmp-shell --rm -i --tty --overrides='{"spec": {"hostNetwork": true}}'  --image benhunter/netshoot`
+  `$ kubectl run tmp-shell --rm -i --tty --overrides='{"spec": {"hostNetwork": true}}'  --image benhunter/netshoot`
 
-* if you want to use netshoot as a sidecar container to troubleshoot your application container
+- if you want to use netshoot as a sidecar container to troubleshoot your application container
 
- ```
-    $ cat netshoot-sidecar.yaml
-    apiVersion: apps/v1
-    kind: Deployment
-    metadata:
-        name: nginx-netshoot
-        labels:
-            app: nginx-netshoot
-    spec:
-    replicas: 1
-    selector:
-        matchLabels:
-            app: nginx-netshoot
-    template:
-        metadata:
-        labels:
-            app: nginx-netshoot
-        spec:
-            containers:
-            - name: nginx
-            image: nginx:1.14.2
-            ports:
-                - containerPort: 80
-            - name: netshoot
-            image: benhunter/netshoot
-            command: ["/bin/bash"]
-            args: ["-c", "while true; do ping localhost; sleep 60;done"]
+```
+   $ cat netshoot-sidecar.yaml
+   apiVersion: apps/v1
+   kind: Deployment
+   metadata:
+       name: nginx-netshoot
+       labels:
+           app: nginx-netshoot
+   spec:
+   replicas: 1
+   selector:
+       matchLabels:
+           app: nginx-netshoot
+   template:
+       metadata:
+       labels:
+           app: nginx-netshoot
+       spec:
+           containers:
+           - name: nginx
+           image: nginx:1.14.2
+           ports:
+               - containerPort: 80
+           - name: netshoot
+           image: benhunter/netshoot
+           command: ["/bin/bash"]
+           args: ["-c", "while true; do ping localhost; sleep 60;done"]
 
-    $ kubectl apply -f netshoot-sidecar.yaml
-      deployment.apps/nginx-netshoot created
+   $ kubectl apply -f netshoot-sidecar.yaml
+     deployment.apps/nginx-netshoot created
 
-    $ kubectl get pod
+   $ kubectl get pod
 NAME                              READY   STATUS    RESTARTS   AGE
 nginx-netshoot-7f9c6957f8-kr8q6   2/2     Running   0          4m27s
 
-    $ kubectl exec -it nginx-netshoot-7f9c6957f8-kr8q6 -c netshoot -- /bin/zsh
-                        dP            dP                           dP
-                        88            88                           88
-    88d888b. .d8888b. d8888P .d8888b. 88d888b. .d8888b. .d8888b. d8888P
-    88'  `88 88ooood8   88   Y8ooooo. 88'  `88 88'  `88 88'  `88   88
-    88    88 88.  ...   88         88 88    88 88.  .88 88.  .88   88
-    dP    dP `88888P'   dP   `88888P' dP    dP `88888P' `88888P'   dP
+   $ kubectl exec -it nginx-netshoot-7f9c6957f8-kr8q6 -c netshoot -- /bin/zsh
+                       dP            dP                           dP
+                       88            88                           88
+   88d888b. .d8888b. d8888P .d8888b. 88d888b. .d8888b. .d8888b. d8888P
+   88'  `88 88ooood8   88   Y8ooooo. 88'  `88 88'  `88 88'  `88   88
+   88    88 88.  ...   88         88 88    88 88.  .88 88.  .88   88
+   dP    dP `88888P'   dP   `88888P' dP    dP `88888P' `88888P'   dP
 
-    Welcome to Netshoot! (github.com/benhunter/netshoot)
+   Welcome to Netshoot! (github.com/benhunter/netshoot)
 
 
-    nginx-netshoot-7f9c6957f8-kr8q6 $ 
- ```
+   nginx-netshoot-7f9c6957f8-kr8q6 $
+```
 
-## The netshoot kubectl plugin
+### The netshoot kubectl plugin
 
 To easily troubleshoot networking issues in your k8s environment, you can leverage the [Netshoot Kubeclt Plugin](https://github.com/nilic/kubectl-netshoot) (shout out to Nebojsa Ilic for creating it!). Using this kubectl plugin, you can easily create ephemeral `netshoot` containers to troubleshoot existing pods, k8s controller or worker nodes. To install the plugin, follow [these steps](https://github.com/nilic/kubectl-netshoot#installation).
 
@@ -137,22 +163,19 @@ kubectl netshoot debug my-existing-pod
 kubectl netshoot debug node/my-node
 ```
 
-
-
 # Network Problems
 
 Many network issues could result in application performance degradation. Some of those issues could be related to the underlying networking infrastructure(underlay). Others could be related to misconfiguration at the host or Docker level. Let's take a look at common networking issues:
 
-* latency
-* routing 
-* DNS resolution
-* firewall 
-* incomplete ARPs
+- latency
+- routing
+- DNS resolution
+- firewall
+- incomplete ARPs
 
-To troubleshoot these issues, `netshoot` includes a set of powerful tools as recommended by this diagram. 
+To troubleshoot these issues, `netshoot` includes a set of powerful tools as recommended by this diagram.
 
 ![](http://www.brendangregg.com/Perf/linux_observability_tools.png)
-
 
 # Included Packages
 
@@ -215,18 +238,19 @@ The following packages are included in `netshoot`. We'll go over some with some 
     swaks \
     perl-crypt-ssleay \
     perl-net-ssleay
-    
+
 # Sample Use-cases
 
-## iperf 
+## iperf
 
-Purpose: test networking performance between two containers/hosts. 
+Purpose: test networking performance between two containers/hosts.
 
 Create Overlay network:
 
 ```
 $ docker network create -d overlay perf-test
 ```
+
 Launch two containers:
 
 ```
@@ -264,12 +288,12 @@ TCP window size: 85.3 KByte (default)
 
 ## tcpdump
 
-**tcpdump** is a powerful and common packet analyzer that runs under the command line. It allows the user to display TCP/IP and other packets being transmitted or received over an attached network interface. 
+**tcpdump** is a powerful and common packet analyzer that runs under the command line. It allows the user to display TCP/IP and other packets being transmitted or received over an attached network interface.
 
 ```
 # Continuing on the iperf example. Let's launch netshoot with perf-test-a's container network namespace.
 
-🐳  → docker run -it --net container:perf-test-a.1.0qlf1kaka0cq38gojf7wcatoa  benhunter/netshoot 
+🐳  → docker run -it --net container:perf-test-a.1.0qlf1kaka0cq38gojf7wcatoa  benhunter/netshoot
 
 # Capturing packets on eth0 and tcp port 9999.
 
@@ -294,20 +318,19 @@ tcpdump: listening on eth0, link-type EN10MB (Ethernet), capture size 262144 byt
 	0x00e0:  3233 3435 3637 3839 3031 3233 3435 3637  2345678901234567
 	0x00f0:  3839 3031 3233 3435 3637 3839 3031 3233  8901234567890123
 	0x0100:  3435 3637 3839 3031 3233 3435 3637 3839  4567890123456789
-	
+
 ```
 
 More info on `tcpdump` can be found [here](http://www.tcpdump.org/tcpdump_man.html).
 
 ## netstat
 
-Purpose: `netstat` is a useful tool for checking your network configuration and activity. 
+Purpose: `netstat` is a useful tool for checking your network configuration and activity.
 
-Continuing on from `iperf` example. Let's use `netstat` to confirm that it's listening on port `9999`. 
-
+Continuing on from `iperf` example. Let's use `netstat` to confirm that it's listening on port `9999`.
 
 ```
-🐳  → docker run -it --net container:perf-test-a.1.0qlf1kaka0cq38gojf7wcatoa  benhunter/netshoot 
+🐳  → docker run -it --net container:perf-test-a.1.0qlf1kaka0cq38gojf7wcatoa  benhunter/netshoot
 
 / # netstat -tulpn
 Active Internet connections (only servers)
@@ -317,7 +340,8 @@ tcp        0      0 0.0.0.0:9999            0.0.0.0:*               LISTEN      
 udp        0      0 127.0.0.11:39552        0.0.0.0:*                           -
 ```
 
-##  nmap
+## nmap
+
 `nmap` ("Network Mapper") is an open source tool for network exploration and security auditing. It is very useful for scanning to see which ports are open between a given set of hosts. This is a common thing to check for when installing Swarm or UCP because a range of ports is required for cluster communication. The command analyzes the connection pathway between the host where `nmap` is running and the given target address.
 
 ```
@@ -330,6 +354,7 @@ Discovered closed port 12389/tcp on 172.31.24.25
 Discovered closed port 12376/tcp on 172.31.24.25
 ...
 ```
+
 There are several states that ports will be discovered as:
 
 - `open`: the pathway to the port is open and there is an application listening on this port.
@@ -355,9 +380,9 @@ ce4ff40a5456        benhunter/netshoot:latest   "iperf -s -p 9999"       5 minut
 
 ## drill
 
-Purpose: drill is a tool	to designed to get all sorts of information out of the DNS.
+Purpose: drill is a tool to designed to get all sorts of information out of the DNS.
 
-Continuing the `iperf` example, we'll use `drill` to understand how services' DNS is resolved in Docker. 
+Continuing the `iperf` example, we'll use `drill` to understand how services' DNS is resolved in Docker.
 
 ```
 🐳  → docker run -it --net container:perf-test-a.1.bil2mo8inj3r9nyrss1g15qav benhunter/netshoot drill -V 5 perf-test-b
@@ -388,7 +413,7 @@ perf-test-b.	600	IN	A	10.0.3.4 <<<<<<<<<<<<<<<<<<<<<<<<<< Service VIP
 ;; ADDITIONAL SECTION:
 
 ;; Query time: 1 msec
-;; SERVER: 127.0.0.11 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Local resolver 
+;; SERVER: 127.0.0.11 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Local resolver
 ;; WHEN: Thu Aug 18 02:08:47 2016
 ;; MSG SIZE  rcvd: 56
 ```
@@ -411,7 +436,9 @@ bnj517hh4ylpf7ewawsp9unrc
 Connection to service-a 8080 port [tcp/http-alt] succeeded!
 
 ```
-##  netgen
+
+## netgen
+
 Purpose: `netgen` is a simple [script](netgen.sh) that will generate a packet of data between containers periodically using `netcat`. The generated traffic can be used to demonstrate different features of the networking stack.
 
 `netgen <host> <ip>` will create a `netcat` server and client listening and sending to the same port.
@@ -457,7 +484,7 @@ srvc.2.vu47gf0sdmje@moby    | Listener started on port 5000
 ...
 ```
 
-##  iproute2
+## iproute2
 
 purpose: a collection of utilities for controlling TCP / IP networking and traffic control in Linux.
 
@@ -487,11 +514,11 @@ More info on `iproute2` [here](http://lartc.org/howto/lartc.iproute2.tour.html)
 
 ## nsenter
 
-Purpose: `nsenter` is a powerful tool allowing you to enter into any namespaces. `nsenter` is available inside `netshoot` but requires `netshoot` to be run as a privileged container. Additionally, you may want to mount the `/var/run/docker/netns` directory to be able to enter any network namespace including bridge and overlay networks. 
+Purpose: `nsenter` is a powerful tool allowing you to enter into any namespaces. `nsenter` is available inside `netshoot` but requires `netshoot` to be run as a privileged container. Additionally, you may want to mount the `/var/run/docker/netns` directory to be able to enter any network namespace including bridge and overlay networks.
 
-With `docker run --name container-B --net container:container-A `, docker uses `container-A`'s network namespace ( including interfaces and routes) when creating `container-B`. This approach is helpful for troubleshooting network issues at the container level. To troubleshoot network issues at the bridge or overlay network level, you need to enter the `namespace` of the network _itself_. `nsenter` allows you to do that. 
+With `docker run --name container-B --net container:container-A `, docker uses `container-A`'s network namespace ( including interfaces and routes) when creating `container-B`. This approach is helpful for troubleshooting network issues at the container level. To troubleshoot network issues at the bridge or overlay network level, you need to enter the `namespace` of the network _itself_. `nsenter` allows you to do that.
 
-For example, if we wanted to check the L2 forwarding table for a overlay network. We need to enter the overlay network namespace and use same tools in `netshoot` to check these entries.  The following examples go over some use cases for using `nsenter` to understand what's happening within a docker network ( overlay in this case).
+For example, if we wanted to check the L2 forwarding table for a overlay network. We need to enter the overlay network namespace and use same tools in `netshoot` to check these entries. The following examples go over some use cases for using `nsenter` to understand what's happening within a docker network ( overlay in this case).
 
 ```
 # Creating an overlay network
@@ -554,9 +581,9 @@ For example, if we wanted to check the L2 forwarding table for a overlay network
 
 # Launching netshoot in privileged mode
  🐳  → docker run -it --rm -v /var/run/docker/netns:/var/run/docker/netns --privileged=true benhunter/netshoot
- 
+
 # Listing all docker-created network namespaces
- 
+
 / # cd /var/run/docker/netns/
 /var/run/docker/netns # ls
 0b1b36d33313  1-9tp0f348do  14d1428c3962  645eb414b538  816b96054426  916dbaa7ea76  db9fd2d68a9b  e79049ce9994  f857b5c01ced
@@ -566,7 +593,7 @@ For example, if we wanted to check the L2 forwarding table for a overlay network
 
 / # nsenter --net=/var/run/docker/netns/1-9tp0f348do sh
 
-# Now all the commands we issue are within that namespace. 
+# Now all the commands we issue are within that namespace.
 
 / # ifconfig
 br0       Link encap:Ethernet  HWaddr 02:15:B8:E7:DE:B3
@@ -619,7 +646,7 @@ vxlan1    Link encap:Ethernet  HWaddr EA:EC:1D:B1:7D:D7
           collisions:0 txqueuelen:0
           RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
 
-# Let's check out the L2 forwarding table. These MAC addresses belong to the tasks/containers in this service. 
+# Let's check out the L2 forwarding table. These MAC addresses belong to the tasks/containers in this service.
 
 / # bridge  fdb show br br0
 33:33:00:00:00:01 dev br0 self permanent
@@ -684,10 +711,10 @@ It will display running and existed containers with useful metrics to help troub
 
 ## Termshark
 
-Termshark is a terminal user-interface for tshark. It allows user to read pcap files or sniff live interfaces with Wireshark's display filters. 
+Termshark is a terminal user-interface for tshark. It allows user to read pcap files or sniff live interfaces with Wireshark's display filters.
 
 ```
-# Launching netshoot with NET_ADMIN and CAP_NET_RAW capabilities. Capturing packets on eth0 with icmp 
+# Launching netshoot with NET_ADMIN and CAP_NET_RAW capabilities. Capturing packets on eth0 with icmp
 / # docker run --rm --cap-add=NET_ADMIN --cap-add=NET_RAW -it benhunter/netshoot termshark -i eth0 icmp
 ```
 
@@ -696,6 +723,7 @@ Termshark is a terminal user-interface for tshark. It allows user to read pcap f
 
 / # docker run --rm --cap-add=NET_ADMIN --cap-add=NET_RAW -v /tmp/ipv4frags.pcap:/tmp/ipv4frags.pcap -it benhunter/netshoot termshark -r /tmp/ipv4frags.pcap
 ```
+
 More info on `termshark` [here](https://github.com/gcla/termshark)
 
 ## Swaks
@@ -716,6 +744,7 @@ swaks --to user@example.com \
 More info, examples and lots of documentation on `Swaks` [here](http://www.jetmore.org/john/code/swaks/)
 
 ## Grpcurl
+
 grpcurl is a command-line tool that lets you interact with gRPC servers. It's basically curl for gRPC servers.
 
 Invoking an RPC on a trusted server (e.g. TLS without self-signed key or custom CA) that requires no client certs and supports server reflection is the simplest thing to do with grpcurl. This minimal invocation sends an empty request body:
@@ -766,9 +795,9 @@ More info, examples and lots of documentation on `Fortio` [here](https://github.
 
 Feel free to provide to contribute networking troubleshooting tools and use-cases by opening PRs. If you would like to add any package, please follow these steps:
 
-* In the PR, please include some rationale as to why this tool is useful to be included in netshoot. 
-     > Note: If the functionality of the tool is already addressed by an existing tool, I might not accept the PR
-* Change the Dockerfile to include the new package/tool
-* If you're building the tool from source, make sure you leverage the multi-stage build process and update the `build/fetch_binaries.sh` script 
-* Update the README's list of included packages AND include a section on how to use the tool
-* If the tool you're adding supports multi-platform, please make sure you highlight that.
+- In the PR, please include some rationale as to why this tool is useful to be included in netshoot.
+  > Note: If the functionality of the tool is already addressed by an existing tool, I might not accept the PR
+- Change the Dockerfile to include the new package/tool
+- If you're building the tool from source, make sure you leverage the multi-stage build process and update the `build/fetch_binaries.sh` script
+- Update the README's list of included packages AND include a section on how to use the tool
+- If the tool you're adding supports multi-platform, please make sure you highlight that.
